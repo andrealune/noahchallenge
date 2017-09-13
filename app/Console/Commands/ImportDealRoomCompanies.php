@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 
 use DB;
 use Exception;
+use App\Company;
 
 class ImportDealRoomCompanies extends Command
 {
@@ -95,9 +96,46 @@ class ImportDealRoomCompanies extends Command
      */
     public function handle()
     {    
-
         $this->info('Start import...');
 
-       
+        $response = $this->execute_curl($this->endpoint);
+
+        $response = json_decode($response);
+
+        if (! isset($response->items)) {
+            $this->info('No items avalaible for this call');
+            die();
+        }
+
+        $companies = $response->items;
+
+        // Iterate each company received
+        foreach($companies as $company) {
+            // Start a manual intersect for company fields
+            $companyData = [
+                "name" => $company->name ? : null,
+                "path" => $company->path ? : null,
+                "tagline" => $company->tagline ? : null,
+                "address" => isset($company->hq_locations[0]->address) ? $company->hq_locations[0]->address : null,
+                "employees" => $company->employees ? : null,
+                "last_updated" => $company->last_updated ? : null,
+            ];
+
+            // Here we insert a new company with retrieved fields first checking if already exists
+            // We use "find()" instead "firstOrCreate()" because some fields could be different than
+            // the one already saved, so we just compare id. 
+            // A possible update could be done here.
+            if (Company::find($company->id)) continue;
+            $company = Company::create($companyData);
+
+            // Append here the id to the saved model since this field is not mass assignable
+            $company->id = $company->id;
+            $company->save();
+
+            $this->info("Company {$company->name} successfully inserted");
+        }
+
+        $this->info(PHP_EOL);
+        $this->info("Your requested {$this->argument('max')} companies were successfully inserted!");
     }
 }

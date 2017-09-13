@@ -11,10 +11,10 @@
 |
 */
 
-Route::get('/companies', function () {
-    // show a paginated list of companies
-});
+Route::get('/companies', 'CompaniesController@index');
 
-Route::get('/companies/{id}', function () {
-    // view a single company data
+Route::get('/companies/{id}', 'CompaniesController@show')->name('companies.show');
+
+Route::get("artisan-test", function(){
+    $artisan = Artisan::call('dealroom:import', ['max' => 20]);
 });
